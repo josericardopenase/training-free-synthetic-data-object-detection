@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Controllable Synthetic Data Generation for Data-Efficient Object Detection</title>
+  <meta name="description" content="Training-free pipeline for controllable synthetic object-detection data using structured prompts, diffusion models, and Grounded SAM pseudo-labeling." />
+  <meta name="author" content="Jose R. Peña-Seco, Jonay Suárez-Ramírez, Adrian Penate-Sanchez, Nelson Monzón" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,600;0,8..60,700;1,8..60,400&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --text: #1a1a1a;
+      --muted: #555;
+      --line: #ddd;
+      --bg: #fff;
+      --link: #1a5f8a;
+      --max: 780px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Source Sans 3", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.65;
+      font-size: 17px;
+    }
+
+    .page {
+      width: min(var(--max), calc(100% - 2.5rem));
+      margin: 0 auto;
+      padding: 2.5rem 0 4rem;
+    }
+
+    h1 {
+      font-family: "Source Serif 4", Georgia, "Times New Roman", serif;
+      font-size: clamp(1.55rem, 3.5vw, 1.95rem);
+      font-weight: 700;
+      line-height: 1.3;
+      text-align: center;
+      margin-bottom: 1.1rem;
+      text-wrap: balance;
+    }
+
+    .authors {
+      text-align: center;
+      font-size: 1.02rem;
+      margin-bottom: 0.35rem;
+      line-height: 1.7;
+    }
+
+    .affiliations {
+      text-align: center;
+      font-size: 0.92rem;
+      color: var(--muted);
+      margin-bottom: 1.25rem;
+      line-height: 1.55;
+    }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.55rem 1.1rem;
+      margin-bottom: 1rem;
+      font-size: 0.98rem;
+    }
+
+    .links a {
+      color: var(--link);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    .links a:hover { text-decoration: underline; }
+
+    .venue {
+      text-align: center;
+      font-size: 0.9rem;
+      color: var(--muted);
+      margin-bottom: 2rem;
+    }
+
+    hr {
+      border: 0;
+      border-top: 1px solid var(--line);
+      margin: 2rem 0;
+    }
+
+    h2 {
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin: 2.25rem 0 0.75rem;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin: 1.5rem 0 0.5rem;
+    }
+
+    p { margin-bottom: 0.9rem; }
+
+    a { color: var(--link); }
+
+    ul, ol {
+      margin: 0 0 1rem 1.35rem;
+    }
+
+    li { margin-bottom: 0.35rem; }
+
+    figure {
+      margin: 1.5rem 0;
+    }
+
+    figure img {
+      width: 100%;
+      height: auto;
+      display: block;
+      border: 1px solid var(--line);
+    }
+
+    figcaption {
+      margin-top: 0.55rem;
+      font-size: 0.9rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    figcaption strong { color: var(--text); font-weight: 600; }
+
+    .table-wrap {
+      overflow-x: auto;
+      margin: 1rem 0 1.25rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.84rem;
+      min-width: 560px;
+    }
+
+    th, td {
+      padding: 0.4rem 0.55rem;
+      text-align: left;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+    }
+
+    th {
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--muted);
+      font-weight: 600;
+      border-bottom: 2px solid #ccc;
+    }
+
+    td.num { font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+    .up { color: #0a6b4a; font-weight: 600; }
+    .down { color: #a31b1b; font-weight: 600; }
+
+    .note {
+      font-size: 0.88rem;
+      color: var(--muted);
+      margin-top: -0.35rem;
+    }
+
+    .cite {
+      background: #f7f7f7;
+      border: 1px solid var(--line);
+      padding: 0.9rem 1rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 0.78rem;
+      line-height: 1.55;
+      white-space: pre-wrap;
+      overflow-x: auto;
+      margin: 0.75rem 0 1.5rem;
+    }
+
+    footer {
+      margin-top: 2.5rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--line);
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    @media (max-width: 640px) {
+      body { font-size: 16px; }
+      .page { padding-top: 1.75rem; }
+    }
+  </style>
+</head>
+<body>
+  <article class="page">
+    <h1>Controllable Synthetic Data Generation for Data-Efficient Object Detection in Real-World Domains</h1>
+
+    <p class="authors">
+      Jose R. Peña-Seco<sup>1</sup>,
+      Jonay Suárez-Ramírez<sup>2</sup>,
+      Adrian Penate-Sanchez<sup>1</sup>,
+      Nelson Monzón<sup>1</sup>
+    </p>
+
+    <p class="affiliations">
+      <sup>1</sup>University of Las Palmas de Gran Canaria (ULPGC)<br />
+      <sup>2</sup>Qualitas Artificial Intelligence and Science (QAISC)
+    </p>
+
+    <p class="links">
+      <a href="https://github.com/josericardopenase/training-free-synthetic-data-object-detection">Code</a>
+    </p>
+
+    <p class="venue">Image and Vision Computing · Preprint 2026</p>
+
+    <hr />
+
+    <h2>Abstract</h2>
+    <p>
+      Object detectors need diverse, instance-level annotations that are expensive to collect in real-world domains.
+      We propose a <em>training-free</em> pipeline that turns structured text prompts into pseudo-labeled detection data:
+      an LLM writes controllable prompts, a diffusion model synthesizes images, and Grounded SAM provides bounding boxes —
+      without fine-tuning the generator or the annotator.
+    </p>
+    <p>
+      Mixed with real data, the synthetic set improves detectors across six heterogeneous benchmarks.
+      Gains reach <strong>+9.0&nbsp;pp AP50</strong> on PASCAL VOC at full scale and
+      <strong>+35.4&nbsp;pp AP50</strong> with only 1,000 real VOC images.
+      On the industrial Vessels&nbsp;&amp;&nbsp;Boats dataset, one third of the real images plus synthetic data matches the AP of the full real training set.
+      Utility depends on domain match: diverse and maritime scenes benefit consistently, while viewpoint-locked driving data (KITTI) shows limited transfer.
+    </p>
+
+    <h2>1. Method</h2>
+    <p>
+      The pipeline has three stages — structured prompt generation, text-to-image synthesis, and automatic annotation —
+      followed by detector training on mixtures of real and synthetic samples.
+    </p>
+
+    <figure>
+      <img src="assets/figures/pipeline.png" alt="Pipeline overview: prompt generation, diffusion, Grounded SAM, detector training" loading="lazy" />
+      <figcaption>
+        <strong>Figure 1.</strong>
+        Overview of the proposed pipeline for automatic synthetic dataset generation and pseudo-labeling, together with its downstream evaluation.
+      </figcaption>
+    </figure>
+
+    <h3>1.1 Controllable prompts</h3>
+    <p>
+      We iterate over a Cartesian product of scene attributes and use Mistral-7B-Instruct to write natural-language prompts:
+    </p>
+    <ul>
+      <li>Object class (generic or domain-specific)</li>
+      <li>Environment (city, forest, maritime, …)</li>
+      <li>Weather (sunny, cloudy, foggy, rainy, …)</li>
+      <li>Object quantity (single, two, three, multiple)</li>
+    </ul>
+    <p>
+      Rare conditions can therefore be requested without annotated spatial guidance from real images.
+      Images are then generated with FLUX under these prompts.
+    </p>
+
+    <figure>
+      <img src="assets/figures/datasets_comparison.jpg" alt="Synthetic images across evaluated datasets with bounding boxes" loading="lazy" />
+      <figcaption>
+        <strong>Figure 2.</strong>
+        Images generated by our pipeline across the evaluated datasets, with bounding boxes overlaid on the annotated objects.
+      </figcaption>
+    </figure>
+
+    <h3>1.2 One category per image</h3>
+    <p>
+      Querying Grounded SAM with many categories at once produces false positives, and domain-specific labels
+      (e.g. <code>person_sitting</code>) often fall outside the model’s vocabulary.
+      We generate and annotate a <strong>single known category per image</strong>, optionally mapping domain-specific
+      names to generic ones at grounding time while preserving the original target class in the annotations.
+    </p>
+
+    <figure>
+      <img src="assets/figures/domain_specific.jpg" alt="Domain-specific label failure versus generic person prompt" loading="lazy" />
+      <figcaption>
+        <strong>Figure 3.</strong>
+        Left: failure with <code>person_sitting</code>. Right: correct boxes via the generic <code>person</code> grounding prompt.
+      </figcaption>
+    </figure>
+
+    <h2>2. Experiments</h2>
+    <p>
+      We evaluate on six benchmarks — PASCAL VOC 2012, KITTI, African Wildlife, Home Objects 3K,
+      Vessels&nbsp;&amp;&nbsp;Boats (industrial maritime), and an MS-COCO subset — with YOLO26 (n/m/x) and RT-DETR,
+      trained from scratch without COCO pretraining.
+    </p>
+
+    <h3>2.1 Full-data regime</h3>
+    <p>
+      With the complete real training set available, synthetic augmentation still yields consistent gains on diverse and maritime domains.
+      The lightweight YOLO26-n improves by <strong>+9.0&nbsp;pp AP50</strong> on VOC; Vessels&nbsp;&amp;&nbsp;Boats gains up to <strong>+7.2&nbsp;pp AP</strong>.
+      KITTI is the exception: transfer is limited or negative for the nano model.
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Dataset (+synth)</th>
+            <th>Model</th>
+            <th>AP50</th>
+            <th>AP50+S</th>
+            <th>AP</th>
+            <th>AP+S</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>VOC 2012 (+16k)</td><td>YOLO26-n</td>
+            <td class="num">59.4</td><td class="num up">68.4 (+9.0)</td>
+            <td class="num">42.2</td><td class="num up">50.5 (+8.3)</td>
+          </tr>
+          <tr>
+            <td>VOC 2012 (+16k)</td><td>YOLO26-m</td>
+            <td class="num">70.4</td><td class="num up">76.0 (+5.6)</td>
+            <td class="num">54.1</td><td class="num up">60.5 (+6.4)</td>
+          </tr>
+          <tr>
+            <td>VOC 2012 (+16k)</td><td>YOLO26-x</td>
+            <td class="num">71.6</td><td class="num up">76.9 (+5.3)</td>
+            <td class="num">55.6</td><td class="num up">62.6 (+7.0)</td>
+          </tr>
+          <tr>
+            <td>VOC 2012 (+16k)</td><td>RT-DETR-L</td>
+            <td class="num">68.4</td><td class="num up">74.1 (+5.7)</td>
+            <td class="num">50.7</td><td class="num up">56.3 (+5.6)</td>
+          </tr>
+          <tr>
+            <td>MSCOCO 5K (+8k)</td><td>YOLO26-m</td>
+            <td class="num">52.5</td><td class="num up">58.9 (+6.4)</td>
+            <td class="num">35.3</td><td class="num up">40.3 (+5.0)</td>
+          </tr>
+          <tr>
+            <td>African Wildlife (+2k)</td><td>YOLO26-n</td>
+            <td class="num">90.1</td><td class="num up">94.6 (+4.5)</td>
+            <td class="num">73.7</td><td class="num up">81.0 (+7.3)</td>
+          </tr>
+          <tr>
+            <td>Vessels &amp; Boats (+9,216)</td><td>YOLO26-n</td>
+            <td class="num">47.8</td><td class="num up">52.8 (+5.0)</td>
+            <td class="num">30.2</td><td class="num up">37.4 (+7.2)</td>
+          </tr>
+          <tr>
+            <td>KITTI (+16k)</td><td>YOLO26-n</td>
+            <td class="num">90.4</td><td class="num down">84.5 (−5.9)</td>
+            <td class="num">69.2</td><td class="num down">60.4 (−8.8)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">Selected rows from the full-data table. Values in parentheses are absolute changes in percentage points.</p>
+
+    <figure>
+      <img src="assets/figures/voc_scaling.png" alt="AP scaling curves for YOLO26-n and YOLO26-m on VOC" loading="lazy" />
+      <figcaption>
+        <strong>Figure 4.</strong>
+        Scaling on VOC 2012 with the full real baseline plus increasing synthetic volumes. AP rises for YOLO26-n (left) and YOLO26-m (right), with smaller marginal gains at the largest volumes.
+      </figcaption>
+    </figure>
+
+    <figure>
+      <img src="assets/figures/detector_comparison.png" alt="AP comparison across detectors and datasets" loading="lazy" />
+      <figcaption>
+        <strong>Figure 5.</strong>
+        Downstream AP across detector variants: real-only vs. maximum synthetic augmentation per dataset.
+      </figcaption>
+    </figure>
+
+    <h3>2.2 Low-data regime</h3>
+    <p>
+      When real supervision is scarce, synthetic data acts as a practical substitute for missing annotations.
+      On VOC with 1,000 real images, YOLO26-n gains <strong>+35.4&nbsp;pp AP50</strong> (+28.3&nbsp;pp AP).
+      On Vessels&nbsp;&amp;&nbsp;Boats, 500 real images plus synthetic data matches the AP of the full real set.
+    </p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Dataset (real, +synth)</th>
+            <th>Model</th>
+            <th>AP50</th>
+            <th>AP50+S</th>
+            <th>AP</th>
+            <th>AP+S</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>VOC (1000, +16k)</td><td>YOLO26-n</td>
+            <td class="num">17.2</td><td class="num up">52.6 (+35.4)</td>
+            <td class="num">8.4</td><td class="num up">36.7 (+28.3)</td>
+          </tr>
+          <tr>
+            <td>VOC (1000, +16k)</td><td>YOLO26-m</td>
+            <td class="num">33.6</td><td class="num up">60.3 (+26.7)</td>
+            <td class="num">21.2</td><td class="num up">46.3 (+25.1)</td>
+          </tr>
+          <tr>
+            <td>VOC (1000, +16k)</td><td>YOLO26-x</td>
+            <td class="num">31.0</td><td class="num up">63.7 (+32.7)</td>
+            <td class="num">20.2</td><td class="num up">48.9 (+28.7)</td>
+          </tr>
+          <tr>
+            <td>MSCOCO (800, +8k)</td><td>YOLO26-m</td>
+            <td class="num">22.1</td><td class="num up">41.6 (+19.5)</td>
+            <td class="num">12.4</td><td class="num up">27.7 (+15.3)</td>
+          </tr>
+          <tr>
+            <td>Vessels (500, +9,216)</td><td>YOLO26-m</td>
+            <td class="num">27.6</td><td class="num up">48.9 (+21.3)</td>
+            <td class="num">17.4</td><td class="num up">36.4 (+19.0)</td>
+          </tr>
+          <tr>
+            <td>African Wildlife (500, +2k)</td><td>YOLO26-x</td>
+            <td class="num">87.6</td><td class="num up">96.1 (+8.5)</td>
+            <td class="num">68.3</td><td class="num up">84.4 (+16.1)</td>
+          </tr>
+          <tr>
+            <td>KITTI (1000, +16k)</td><td>YOLO26-n</td>
+            <td class="num">47.4</td><td class="num up">55.3 (+7.9)</td>
+            <td class="num">28.5</td><td class="num up">35.0 (+6.5)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <figure>
+      <img src="assets/figures/lowdata_scaling.png" alt="Low-data VOC scaling toward full-data references" loading="lazy" />
+      <figcaption>
+        <strong>Figure 6.</strong>
+        Low-data VOC (1,000 real images): synthetic volume progressively closes the gap to the full-data real-only and full-data+synthetic references.
+      </figcaption>
+    </figure>
+
+    <h2>3. When does synthetic data help?</h2>
+    <p>
+      We embed real and synthetic images with CLIP, cluster the real set, and visualize overlap with t-SNE.
+      Utility depends on compatibility with the target distribution <em>and</em> how much real data is already available.
+    </p>
+
+    <figure>
+      <img src="assets/figures/tsne_domain.png" alt="t-SNE domain view of real versus synthetic embeddings" loading="lazy" />
+      <figcaption>
+        <strong>Figure 7.</strong>
+        Domain view: real (blue) vs. synthetic (orange) CLIP embeddings across the six datasets. KITTI shows the strongest separation.
+      </figcaption>
+    </figure>
+
+    <figure>
+      <img src="assets/figures/tsne_clusters.png" alt="t-SNE cluster view of real and synthetic embeddings" loading="lazy" />
+      <figcaption>
+        <strong>Figure 8.</strong>
+        Cluster view: <em>k</em>-means on real embeddings; synthetic samples assigned to the nearest real centroid.
+      </figcaption>
+    </figure>
+
+    <figure>
+      <img src="assets/figures/domain_gap_metrics.png" alt="Cross-domain mixing, density, and coverage metrics" loading="lazy" />
+      <figcaption>
+        <strong>Figure 9.</strong>
+        Neighborhood metrics in CLIP space: Cross-Domain Mixing, Density, and Coverage. Higher values indicate greater local overlap, but do not by themselves guarantee larger detection gains.
+      </figcaption>
+    </figure>
+
+    <p>
+      KITTI’s near-zero mixing coincides with the full-data degradation for YOLO26-n, while Vessels&nbsp;&amp;&nbsp;Boats shows higher overlap and strong gains.
+      Still, overlap alone is not enough: Home Objects has relatively high neighborhood mixing with only modest full-data gains, and African Wildlife improves substantially despite lower mixing.
+      With scarce real data, even KITTI benefits — so domain gap and data regime interact.
+    </p>
+
+    <h2>4. Takeaways</h2>
+    <ul>
+      <li>Fully automatic synthetic detection datasets — no manual boxes on generated images.</li>
+      <li>Controllable diversification of rare environments, weather, and object counts.</li>
+      <li>Strongest returns in low-data regimes; gains also appear at full scale for diverse domains.</li>
+      <li>Domain diagnostics explain when augmentation helps and when viewpoint-locked domains resist transfer.</li>
+      <li>Improvements in 31 of 32 evaluated settings; synthetic data complements, rather than replaces, real annotations.</li>
+    </ul>
+
+    <h2>Citation</h2>
+    <pre class="cite">@article{penaseco2026controllable,
+  title={Controllable Synthetic Data Generation for Data-Efficient Object Detection in Real-World Domains},
+  author={Pe{\~n}a-Seco, Jose R. and Su{\'a}rez-Ram{\'i}rez, Jonay and Penate-Sanchez, Adrian and Monz{\'o}n, Nelson},
+  journal={Image and Vision Computing (preprint)},
+  year={2026}
+}</pre>
+
+    <footer>
+      Project page for the Image and Vision Computing 2026 preprint ·
+      <a href="https://github.com/josericardopenase/training-free-synthetic-data-object-detection">Code</a>
+    </footer>
+  </article>
+</body>
+</html>
