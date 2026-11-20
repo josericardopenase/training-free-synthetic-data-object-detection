@@ -1,68 +1,107 @@
-# Controllable Synthetic Data for Data-Efficient Object Detection
+# Controllable Synthetic Data Generation for Data-Efficient Object Detection in Real-World Domains
 
-**Training-free** pipeline that turns structured text prompts into pseudo-labeled object-detection datasets — then uses them to train detectors when real annotations are scarce or expensive.
+[![Project Page](https://img.shields.io/badge/Project-Page-1a5f8a)](https://josericardopenase.github.io/training-free-synthetic-data-object-detection/)
+[![GitHub](https://img.shields.io/badge/Code-GitHub-181717?logo=github)](https://github.com/josericardopenase/training-free-synthetic-data-object-detection)
+[![Venue](https://img.shields.io/badge/Venue-Image%20%26%20Vision%20Computing%20(preprint)-b31b1b)](#citation)
 
-**Project page:** [josericardopenase.github.io/training-free-synthetic-data-object-detection](https://josericardopenase.github.io/training-free-synthetic-data-object-detection/)
+**Training-free** synthesis of pseudo-labeled detection data: structured LLM prompts → FLUX images → Grounded SAM boxes → detector training on real + synthetic mixtures.
 
-> Preprint submitted to *Image and Vision Computing* (2026). PDF will be linked here after the arXiv upload.
+**[Project page](https://josericardopenase.github.io/training-free-synthetic-data-object-detection/)** · **Code** (this repo) · Paper PDF *(link after arXiv)*
 
-## Authors
+<p align="center">
+  <img src="docs/assets/figures/pipeline.png" alt="Pipeline overview" width="95%"/>
+</p>
 
-Jose R. Peña-Seco<sup>1</sup>, Jonay Suárez-Ramírez<sup>2</sup>, Adrian Penate-Sanchez<sup>1</sup>, Nelson Monzón<sup>1</sup>
+<p align="center">
+  <em>Jose R. Peña-Seco<sup>1</sup>, Jonay Suárez-Ramírez<sup>2</sup>, Adrian Penate-Sanchez<sup>1</sup>, Nelson Monzón<sup>1</sup></em><br/>
+  <sup>1</sup>ULPGC &nbsp;·&nbsp; <sup>2</sup>QAISC
+</p>
 
-<sup>1</sup> University of Las Palmas de Gran Canaria (ULPGC) · <sup>2</sup> Qualitas Artificial Intelligence and Science (QAISC)
+---
 
-## Overview
+## Why this exists
 
-Collecting instance-level boxes for real-world detection is costly, especially under rare weather, viewpoints, or object counts. This repository implements a fully automatic augmentation pipeline:
+Object detectors need instance-level boxes. In specialized domains those labels are expensive, and rare conditions (weather, viewpoints, object counts) are hard to capture. Classical augmentation only remixes what you already have.
 
-1. **Structured prompts** — an LLM (Mistral-7B-Instruct) expands a Cartesian product of class, environment, weather, and object quantity into natural-language captions.
-2. **Image synthesis** — FLUX generates images from those prompts (no generator fine-tuning).
-3. **Pseudo-labeling** — Grounded SAM produces boxes with a **one-category-per-image** strategy to cut false positives and handle domain-specific class names.
-4. **Detector training** — YOLO26 / RT-DETR train on mixtures of real and synthetic data, from scratch.
+This work treats synthetic data as a **controllable, automatic** resource: specify *what* to generate, synthesize images with a frozen diffusion model, and pseudo-label them with an open-vocabulary grounder — **no fine-tuning** of the generator or the annotator.
 
-Domain diagnostics (CLIP embeddings + t-SNE + neighborhood metrics) help explain when the synthetic set helps and when it does not.
+## Method (short)
 
-## Highlights
+| Stage | What we do |
+|-------|------------|
+| 1. Prompts | Mistral-7B-Instruct expands class × environment × weather × quantity into captions |
+| 2. Images | FLUX synthesizes samples from those captions |
+| 3. Labels | Grounded SAM annotates with a **one-category-per-image** strategy (reduces false positives; maps domain-specific names to generic grounding prompts) |
+| 4. Train | YOLO26 / RT-DETR trained from scratch on real + synthetic mixtures |
 
-| Setting | Result |
-|--------|--------|
-| PASCAL VOC, full real data + 16k synth | up to **+9.0 pp AP50** (YOLO26-n) |
-| PASCAL VOC, 1k real + 16k synth | up to **+35.4 pp AP50** |
-| Vessels & Boats (industrial maritime) | ~⅓ of real images + synth **matches full-real AP** |
-| Cross-domain | Strong gains on diverse / maritime domains; limited transfer on viewpoint-locked KITTI |
+We also analyze the **synthetic-to-real gap** in CLIP space (t-SNE + neighborhood mixing / density / coverage) to interpret when augmentation helps.
 
-Evaluated on six benchmarks: PASCAL VOC 2012, MS-COCO subset, KITTI, African Wildlife, Home Objects 3K, and Vessels & Boats.
+<p align="center">
+  <img src="docs/assets/figures/datasets_comparison.jpg" alt="Synthetic examples" width="90%"/>
+</p>
 
-## Repository layout
+## Results
+
+Evaluated on **six** benchmarks: PASCAL VOC 2012, MS-COCO subset, KITTI, African Wildlife, Home Objects 3K, and industrial **Vessels & Boats**.
+
+| Setting | Main outcome |
+|---------|----------------|
+| VOC full real + 16k synth | up to **+9.0 pp AP50** (YOLO26-n) |
+| VOC 1k real + 16k synth | up to **+35.4 pp AP50** |
+| Vessels & Boats | ~**1/3** of real images + synth **matches full-real AP** |
+| Domain dependence | Strong on diverse / maritime scenes; limited / negative transfer on viewpoint-locked KITTI (full-data nano) |
+| Overall | Gains in **31 / 32** evaluated configurations |
+
+<p align="center">
+  <img src="docs/assets/figures/detector_comparison.png" alt="Detector comparison" width="95%"/>
+</p>
+
+More tables, scaling curves, and domain-gap figures: **[project page](https://josericardopenase.github.io/training-free-synthetic-data-object-detection/)**.
+
+## Repository
 
 ```text
-docs/                 Project page (GitHub Pages)
-training_scripts/     Detector training entry points
-*.ipynb               Prompting, FLUX generation, Grounded SAM labeling, domain-shift analysis
-training_history/     Experiment logs and curves
-requirements.txt      Python dependencies
+docs/                      Project page (GitHub Pages)
+prompt_generation.ipynb    Structured LLM prompts
+diffusion_generation.ipynb FLUX image synthesis
+groundedsam_labeling.ipynb Automatic boxes (Grounded SAM)
+training_scripts/          YOLO / RT-DETR training & eval notebooks
+domain_shift_*.ipynb       Real–synthetic distribution analysis
+charts.ipynb               Result plots
+requirements.txt           Python dependencies
 ```
 
-## Quick start
+## Setup
 
 ```bash
-# Environment (uv or pip)
-uv sync
-# or: pip install -r requirements.txt
+git clone https://github.com/josericardopenase/training-free-synthetic-data-object-detection.git
+cd training-free-synthetic-data-object-detection
 
-# Typical workflow (notebooks)
-# 1) prompt_generation.ipynb
-# 2) diffusion_generation.ipynb
-# 3) groundedsam_labeling.ipynb
-# 4) training_scripts/ + yolo_training.ipynb
+# Option A
+uv sync
+
+# Option B
+python -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 ```
+
+GPU recommended for FLUX generation and detector training (see paper for hardware notes).
+
+## Usage
+
+End-to-end flow (notebooks):
+
+1. `prompt_generation.ipynb` — build controllable prompts  
+2. `diffusion_generation.ipynb` — generate images with FLUX  
+3. `groundedsam_labeling.ipynb` — pseudo-label with one-category-per-image  
+4. `training_scripts/yolo_training.ipynb` — train on real + synthetic mixtures  
+5. `domain_shift_analysis*.ipynb` — optional CLIP / t-SNE diagnostics  
 
 Preview the project page locally:
 
 ```bash
 cd docs && python3 -m http.server 8000
-# http://localhost:8000
+# open http://localhost:8000
 ```
 
 ## Citation
@@ -78,4 +117,4 @@ cd docs && python3 -m http.server 8000
 
 ## Acknowledgments
 
-Supported by the Cabildo de Gran Canaria (Resolution 45/2021) and QAISC. The Vessels & Boats dataset was provided by QAISC under research contract C2024/54 with ULPGC.
+Supported by the Cabildo de Gran Canaria (Resolution 45/2021) and Qualitas Artificial Intelligence and Science (QAISC). The Vessels & Boats dataset was provided by QAISC under research contract C2024/54 with the University of Las Palmas de Gran Canaria.
