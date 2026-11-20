@@ -1,79 +1,71 @@
 # Controllable Synthetic Data for Data-Efficient Object Detection
 
-Preprint (IVC 2026): pipeline **sin entrenamiento adicional** para generar datos sintéticos de detección de objetos con modelos de difusión y pseudo-etiquetado automático (Grounded SAM).
+**Training-free** pipeline that turns structured text prompts into pseudo-labeled object-detection datasets — then uses them to train detectors when real annotations are scarce or expensive.
 
-**Autores:** Jose R. Peña-Seco, Jonay Suárez-Ramírez, Adrian Penate-Sanchez, Nelson Monzón  
-**Afiliaciones:** ULPGC · QAISC
+**Project page:** [josericardopenase.github.io/training-free-synthetic-data-object-detection](https://josericardopenase.github.io/training-free-synthetic-data-object-detection/)
 
-## Resumen breve
+> Preprint submitted to *Image and Vision Computing* (2026). PDF will be linked here after the arXiv upload.
 
-Los detectores de objetos dependen de anotaciones caras y poco representativas en dominios reales. Este trabajo propone un pipeline *training-free* que:
+## Authors
 
-1. Genera prompts estructurados (clase, entorno, clima, cantidad) con un LLM (Mistral-7B-Instruct).
-2. Sintetiza imágenes con un modelo text-to-image (FLUX).
-3. Pseudo-etiqueta con Grounded SAM usando la estrategia **one-category-per-image** para reducir falsos positivos y fallos con etiquetas domain-specific.
-4. Entrena detectores (YOLO26, RT-DETR) mezclando datos reales y sintéticos.
+Jose R. Peña-Seco<sup>1</sup>, Jonay Suárez-Ramírez<sup>2</sup>, Adrian Penate-Sanchez<sup>1</sup>, Nelson Monzón<sup>1</sup>
 
-**Resultados destacados**
+<sup>1</sup> University of Las Palmas de Gran Canaria (ULPGC) · <sup>2</sup> Qualitas Artificial Intelligence and Science (QAISC)
 
-- Hasta **+9.0 pp AP50** en PASCAL VOC con datos completos + sintéticos.
-- Hasta **+35.4 pp AP50** en régimen low-data (1 000 imágenes reales).
-- En el dataset industrial *Vessels & Boats*, un tercio de datos reales + sintéticos iguala el AP del conjunto real completo.
-- La utilidad del sintético depende del dominio (p. ej. beneficios claros en VOC / maritime; transfer limitado en KITTI).
+## Overview
 
-## Página web (GitHub Pages)
+Collecting instance-level boxes for real-world detection is costly, especially under rare weather, viewpoints, or object counts. This repository implements a fully automatic augmentation pipeline:
 
-La página del proyecto está en [`docs/`](docs/):
+1. **Structured prompts** — an LLM (Mistral-7B-Instruct) expands a Cartesian product of class, environment, weather, and object quantity into natural-language captions.
+2. **Image synthesis** — FLUX generates images from those prompts (no generator fine-tuning).
+3. **Pseudo-labeling** — Grounded SAM produces boxes with a **one-category-per-image** strategy to cut false positives and handle domain-specific class names.
+4. **Detector training** — YOLO26 / RT-DETR train on mixtures of real and synthetic data, from scratch.
 
-| Ruta | Contenido |
-|------|-----------|
-| `docs/index.html` | Sitio estático del paper (método, figuras, tablas, citación) |
-| `docs/assets/figures/` | Figuras del manuscript optimizadas para la web |
+Domain diagnostics (CLIP embeddings + t-SNE + neighborhood metrics) help explain when the synthetic set helps and when it does not.
 
-La fuente LaTeX del preprint **no** está en `docs/` (GitHub Pages) para evitar filtrarla antes de arXiv.
+## Highlights
 
-Código: [training-free-synthetic-data-object-detection](https://github.com/josericardopenase/training-free-synthetic-data-object-detection)
+| Setting | Result |
+|--------|--------|
+| PASCAL VOC, full real data + 16k synth | up to **+9.0 pp AP50** (YOLO26-n) |
+| PASCAL VOC, 1k real + 16k synth | up to **+35.4 pp AP50** |
+| Vessels & Boats (industrial maritime) | ~⅓ of real images + synth **matches full-real AP** |
+| Cross-domain | Strong gains on diverse / maritime domains; limited transfer on viewpoint-locked KITTI |
 
-### Activar GitHub Pages
+Evaluated on six benchmarks: PASCAL VOC 2012, MS-COCO subset, KITTI, African Wildlife, Home Objects 3K, and Vessels & Boats.
 
-1. Sube el repositorio a GitHub.
-2. **Settings → Pages → Build and deployment**
-3. Source: **Deploy from a branch**
-4. Branch: `main` (o la que uses) · Folder: **`/docs`**
-5. La URL quedará en `https://<usuario>.github.io/<repo>/`
+## Repository layout
 
-Vista local:
+```text
+docs/                 Project page (GitHub Pages)
+training_scripts/     Detector training entry points
+*.ipynb               Prompting, FLUX generation, Grounded SAM labeling, domain-shift analysis
+training_history/     Experiment logs and curves
+requirements.txt      Python dependencies
+```
+
+## Quick start
+
+```bash
+# Environment (uv or pip)
+uv sync
+# or: pip install -r requirements.txt
+
+# Typical workflow (notebooks)
+# 1) prompt_generation.ipynb
+# 2) diffusion_generation.ipynb
+# 3) groundedsam_labeling.ipynb
+# 4) training_scripts/ + yolo_training.ipynb
+```
+
+Preview the project page locally:
 
 ```bash
 cd docs && python3 -m http.server 8000
-# abrir http://localhost:8000
+# http://localhost:8000
 ```
 
-## Estructura del repositorio
-
-```
-difu-paper/
-├── README.md
-├── docs/                       # GitHub Pages (público)
-│   ├── index.html
-│   └── assets/figures/         # 9 figuras web
-├── paper/                      # Fuente LaTeX (local; en .gitignore)
-├── charts.ipynb
-├── dataset_transfer.ipynb
-└── training_history/
-```
-
-### Figuras en la web (alineadas con el manuscript)
-
-1. Pipeline completo  
-2. Ejemplos sintéticos anotados  
-3. One-category / etiquetas domain-specific  
-4. Escalado VOC (full-data)  
-5. Comparación de detectores  
-6. Escalado VOC (low-data)  
-7–9. Análisis synthetic-to-real (t-SNE domain/cluster + métricas)
-
-## Citación
+## Citation
 
 ```bibtex
 @article{penaseco2026controllable,
@@ -84,6 +76,6 @@ difu-paper/
 }
 ```
 
-## Keywords
+## Acknowledgments
 
-Synthetic data · diffusion models · automatic annotation · Grounded SAM · pseudo-labeling · one-category-per-image · object detection · low-data regime · lightweight detectors
+Supported by the Cabildo de Gran Canaria (Resolution 45/2021) and QAISC. The Vessels & Boats dataset was provided by QAISC under research contract C2024/54 with ULPGC.
