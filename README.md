@@ -2,7 +2,7 @@
 
 [![Project Page](https://img.shields.io/badge/Project-Page-1a5f8a)](https://josericardopenase.github.io/training-free-synthetic-data-object-detection/)
 [![GitHub](https://img.shields.io/badge/Code-GitHub-181717?logo=github)](https://github.com/josericardopenase/training-free-synthetic-data-object-detection)
-[![Venue](https://img.shields.io/badge/Venue-Image%20%26%20Vision%20Computing%20(preprint)-b31b1b)](#citation)
+[![Preprint](https://img.shields.io/badge/Status-Preprint%202026-b31b1b)](#citation)
 
 **Training-free** synthesis of pseudo-labeled detection data: structured LLM prompts → FLUX images → Grounded SAM boxes → detector training on real + synthetic mixtures.
 
@@ -110,7 +110,7 @@ cd docs && python3 -m http.server 8000
 @article{penaseco2026controllable,
   title={Controllable Synthetic Data Generation for Data-Efficient Object Detection in Real-World Domains},
   author={Pe{\~n}a-Seco, Jose R. and Su{\'a}rez-Ram{\'i}rez, Jonay and Penate-Sanchez, Adrian and Monz{\'o}n, Nelson},
-  journal={Image and Vision Computing (preprint)},
+  journal={Preprint},
   year={2026}
 }
 ```
