@@ -58,6 +58,10 @@ Evaluated on **six** benchmarks: PASCAL VOC 2012, MS-COCO subset, KITTI, African
 
 More tables, scaling curves, and domain-gap figures: **[project page](https://josericardopenase.github.io/training-free-synthetic-data-object-detection/)**.
 
+## Data
+
+You can find generated synthetic datasets here: **[Supplementary Data](https://zenodo.org/records/24397025)**.
+
 ## Repository
 
 ```text
